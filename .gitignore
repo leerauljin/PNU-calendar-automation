@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 
 .DS_Store
+pnu_cal_db.txt
+pnu_cal.ics
