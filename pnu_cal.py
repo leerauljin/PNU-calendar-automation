@@ -37,7 +37,7 @@ for row in calendar_rows[1:]:
     clean_date = raw_date.replace('.', '-')
     begin_date, end_date = clean_date.split(' - ')
 
-    # To avoide calander duplication
+    # Check for duplicate event entry
     db_entry = raw_date + ' ' + subject
 
     if db_entry not in db:
@@ -51,5 +51,7 @@ for row in calendar_rows[1:]:
 
 with open('pnu_cal.ics', 'w') as file:
     file.writelines(calendar)
+
+# Write db file to avoid duplication
 with open('pnu_cal_db.txt', 'w') as file:
     file.write("\n".join(db))
