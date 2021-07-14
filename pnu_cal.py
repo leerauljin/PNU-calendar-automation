@@ -2,30 +2,59 @@
 # -*- coding: utf-8 -*-
 
 from ics import Calendar, Event
-from retrying import retry
-import requests
 import lxml.html as lh
+import requests
+
+URL = 'https://www.pusan.ac.kr/kor/CMS/Haksailjung/view.do?mCode=MN076'
+MAX_RETRY = 5
+FILENAME_DB = 'pnu_cal_db.txt'
+FILENAME_RESULT = 'pnu_cal.ics'
 
 
-@retry(stop_max_attempt_number=5, wait_random_min=5000, wait_random_max=10000)
-def request_url(url):
-    page = requests.get(url)
-    return page
+def extract_source():
+    retry_count = 0
+    while retry_count < MAX_RETRY:
+        try:
+            page = requests.get(URL)
+        except requests.ConnectionError:
+            print('Connection Error. Retrying...')
+            retry_count += 1
+        else:
+            doc = lh.fromstring(page.content)
+            break
+    return doc
 
 
-try:
-    with open('pnu_cal_db.txt', 'r') as file:
-        db = [line.rstrip() for line in file]
-except FileNotFoundError:
-    db = []
+def read_db():
+    try:
+        with open(FILENAME_DB, 'r') as file:
+            db = [line.rstrip() for line in file]
+        print('DB Read Complete.')
+    except FileNotFoundError:
+        db = []
+    return db
+
+
+def save_db(db):
+    # Write db file to avoid duplication
+    with open(FILENAME_DB, 'w') as file:
+        file.write("\n".join(db))
+
+    print('DB Write Successful!')
+
+
+def save_cal(calendar):
+    with open(FILENAME_RESULT, 'w') as file:
+        file.writelines(calendar)
+
+    print('Calendar Write Successful!')
+
+
+db = read_db()
 
 calendar = Calendar()
 
-url = 'https://www.pusan.ac.kr/kor/CMS/Haksailjung/view.do?mCode=MN076'
-
-page = request_url(url)
-doc = lh.fromstring(page.content)
-
+doc = extract_source()
 # Parse data that are stored between <tr>..</tr> of HTML
 calendar_rows = doc.xpath('//tr')
 
@@ -49,9 +78,5 @@ for row in calendar_rows[1:]:
         event.make_all_day()
         calendar.events.add(event)
 
-with open('pnu_cal.ics', 'w') as file:
-    file.writelines(calendar)
-
-# Write db file to avoid duplication
-with open('pnu_cal_db.txt', 'w') as file:
-    file.write("\n".join(db))
+save_db(db)
+save_cal(calendar)
